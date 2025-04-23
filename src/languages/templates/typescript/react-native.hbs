@@ -51,8 +51,11 @@ export const useAnalytics = () => {
       'To use the useAnalytics() hook, pass an initialized Segment client into the AnalyticsProvider',
     );
 
-    // @ts-ignore
-    return {};
+    return {
+      {{#type}}
+      {{functionName}}: async() => {},
+      {{/type}}
+    };
   }
   return {
     ...client,

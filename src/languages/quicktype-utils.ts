@@ -211,6 +211,15 @@ function createCodeGeneratorFromTemplate(
   try {
     const template = fs.readFileSync(absolutePath);
     Handlebars.registerHelper("eq", (a, b) => a === b);
+    // Add helper to parse JSON
+    Handlebars.registerHelper("json", function(context) {
+      try {
+        return JSON.parse(context);
+      } catch (e) {
+        console.error('Error parsing JSON:', e);
+        return [];
+      }
+    });
     const generator = Handlebars.compile(template.toString());
 
     return (renderer) => {
@@ -228,6 +237,26 @@ function createCodeGeneratorFromTemplate(
             .getAttributes()
             .get(eventMetadataAttributeKind);
 
+          // Extract required fields for properties
+          let requiredFields: string[] = [];
+          try {
+            // Use the schema to find required properties
+            if (metadata.raw && typeof metadata.raw === 'object') {
+              // Navigate through the properties schema structure
+              const rawObj = metadata.raw as Record<string, any>;
+              if (rawObj.properties && 
+                  typeof rawObj.properties === 'object' && 
+                  rawObj.properties.properties && 
+                  typeof rawObj.properties.properties === 'object' && 
+                  rawObj.properties.properties.required && 
+                  Array.isArray(rawObj.properties.properties.required)) {
+                requiredFields = rawObj.properties.properties.required;
+              }
+            }
+          } catch (e) {
+            console.error('Error extracting required fields:', e);
+          }
+
           tags.type.push({
             eventName: metadata.name,
             eventType: metadata.type,
@@ -240,6 +269,7 @@ function createCodeGeneratorFromTemplate(
             // @ts-ignore
             typeName: renderer.sourcelikeToString(name),
             rawJSONSchema: JSON.stringify(metadata.raw),
+            requiredFields: JSON.stringify(requiredFields),
           });
         },
         isNamedType

@@ -8,15 +8,39 @@ import type { SegmentClient } from '@segment/analytics-react-native/lib/typescri
 
 export type TypewriterSegmentClient = SegmentClient & {
   {{#type}}
-  {{functionName}}: (message: {{typeName}}) => void,
+  /**
+   * Track a {{eventName}} event
+   * @param message Event data with required properties 
+   */
+  {{functionName}}: (message: {{typeName}} & { properties: NonNullable<{{typeName}}['properties']> }) => void,
   {{/type}}
 }
 
 function extendSegmentClient(client: SegmentClient): TypewriterSegmentClient {
   const extendedClient = client as TypewriterSegmentClient;
   {{#type}}
-  extendedClient.{{functionName}} = (message: {{typeName}}) => {
-    client.track('{{eventName}}', message as {{typeName}});
+  extendedClient.{{functionName}} = (message) => {
+    if (!message.properties) {
+      throw new Error("Properties are required for {{typeName}}");
+    }
+    
+    // Check for required properties based on interface definition
+    const props = message.properties;
+    const missingProps = [];
+    
+    // Find required properties (checking values === undefined might be more robust)
+    for (const key in props) {
+      const value = props[key];
+      if (value === undefined) {
+        missingProps.push(key);
+      }
+    }
+    
+    if (missingProps.length > 0) {
+      throw new Error(`Missing values for required properties in {{typeName}}: ${missingProps.join(', ')}`);
+    }
+    
+    client.track('{{eventName}}', message);
   };
   {{/type}}
   return extendedClient;
@@ -34,7 +58,7 @@ export const AnalyticsProvider = ({
   children,
 }: {
   client?: ReturnType<typeof createClient>;
-  children?: any;
+  children?: React.ReactNode;
 }) => {
   if (!client) {
     return null;
@@ -53,7 +77,12 @@ export const useAnalytics = () => {
 
     return {
       {{#type}}
-      {{functionName}}: async() => {},
+      /**
+       * Track a {{eventName}} event (stub implementation when client is not configured)
+       */
+      {{functionName}}: (message: {{typeName}} & { properties: NonNullable<{{typeName}}['properties']> }) => { 
+        throw new Error('Analytics client not configured'); 
+      },
       {{/type}}
     };
   }

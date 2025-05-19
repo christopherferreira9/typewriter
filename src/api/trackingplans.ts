@@ -114,7 +114,7 @@ export async function writeTrackingPlan(
   >(
     // Enforce a deterministic ordering to reduce verson control deltas.
     (plan: SegmentAPI.TrackingPlan) => sanitizeTrackingPlan(plan),
-    (plan: SegmentAPI.TrackingPlan) => stringify(plan, { space: "\t" })
+    (plan: SegmentAPI.TrackingPlan) => stringify(plan, { space: "\t" }) as string
   )(plan);
 
   await writeFile(path, planJSON, {
